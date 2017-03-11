@@ -11,33 +11,23 @@ import time
 import re
 from twisted.internet import pollreactor
 from neopixel import *
+from functools import partial
 
 #Initial Setup
 MY_HASH_TAG="#DHFColor"
 MY_LED_COUNT      = 32      # Number of LED pixels.
 MY_SEARCH_DELAY = 5
-MY_CONSUMER_KEY = 'XXXXXX'  #Created at https://apps.twitter.com/
-MY_CONSUMER_SECRET = 'XXXXXX'
-MY_ACCESS_TOKEN = 'XXXXXX'
-MY_ACCESS_TOKEN_SECRET = 'XXXXXX'
+MY_CONSUMER_KEY = 'xxx'  #Created at https://apps.twitter.com/
+MY_CONSUMER_SECRET = 'xxx'
+MY_ACCESS_TOKEN = 'xxx'
+MY_ACCESS_TOKEN_SECRET = 'xxx'
 
-#Look up new color codes here: http://www.rapidtables.com/web/color/RGB_Color.htm
-MY_CODES={
-	"red":Color(255, 0, 0),
-	"blue":Color(0,0,255),
-	"green":Color(0,255,0),
-	"white":Color(255,255,255),
-	"yellow":Color(255,255,0),
-	"cyan":Color(0,255,255),
-	"aqua":Color(0,255,255),
-	"teal":Color(0,255,255),
-	"magenta":Color(255,0,255),
-	"fuscia":Color(255,0,255),
-	"pink":Color(255,0,255)
-}
+
+####### No need to modify anything below this line
+LOG_FILE='log.ini'
 
 config = ConfigParser.RawConfigParser()
-config.read('log.ini')
+config.read(LOG_FILE)
 maxID=config.getint('Twitter', 'maxID')
 tweetCount=config.getint('Twitter', 'tweetCount')
 print("Using maxID: " + str(maxID))
@@ -77,6 +67,7 @@ strip = Adafruit_NeoPixel(MY_LED_COUNT, LED_PIN, LED_FREQ_HZ, LED_DMA, LED_INVER
 
 # Define functions which animate LEDs in various ways.
 def colorWipe(strip, color, wait_ms=50):
+	print "Color Wipe"
 	"""Wipe color across display a pixel at a time."""
 	for i in range(strip.numPixels()):
 		strip.setPixelColor(i, color)
@@ -84,6 +75,7 @@ def colorWipe(strip, color, wait_ms=50):
 		time.sleep(wait_ms/1000.0)
 
 def theaterChase(strip, color, wait_ms=50, iterations=10):
+	print "Theatre Mode"
 	"""Movie theater light style chaser animation."""
 	for j in range(iterations):
 		for q in range(3):
@@ -93,6 +85,7 @@ def theaterChase(strip, color, wait_ms=50, iterations=10):
 			time.sleep(wait_ms/1000.0)
 			for i in range(0, strip.numPixels(), 3):
 				strip.setPixelColor(i+q, 0)
+	colorWipe(strip,Color(0,0,0))
 
 def wheel(pos):
 	"""Generate rainbow colors across 0-255 positions."""
@@ -106,12 +99,14 @@ def wheel(pos):
 		return Color(0, pos * 3, 255 - pos * 3)
 
 def rainbow(strip, wait_ms=20, iterations=1):
+	print "Rainbow mode"
 	"""Draw rainbow that fades across all pixels at once."""
 	for j in range(256*iterations):
 		for i in range(strip.numPixels()):
 			strip.setPixelColor(i, wheel((i+j) & 255))
 		strip.show()
 		time.sleep(wait_ms/1000.0)
+	colorWipe(strip,Color(0,0,0))
 
 def rainbowCycle(strip, wait_ms=20, iterations=5):
 	"""Draw rainbow that uniformly distributes itself across all pixels."""
@@ -120,6 +115,7 @@ def rainbowCycle(strip, wait_ms=20, iterations=5):
 			strip.setPixelColor(i, wheel((int(i * 256 / strip.numPixels()) + j) & 255))
 		strip.show()
 		time.sleep(wait_ms/1000.0)
+	colorWipe(strip,Color(0,0,0))
 
 def theaterChaseRainbow(strip, wait_ms=50):
 	"""Rainbow movie theater light style chaser animation."""
@@ -131,6 +127,7 @@ def theaterChaseRainbow(strip, wait_ms=50):
 			time.sleep(wait_ms/1000.0)
 			for i in range(0, strip.numPixels(), 3):
 				strip.setPixelColor(i+q, 0)
+	colorWipe(strip,Color(0,0,0))
 
 def doTwitterSearch():
     global tso
@@ -158,7 +155,7 @@ def doTwitterSearch():
                 #print "Checking for code: " + code.lower()
                 if (code.lower() in tweet['text'].lower()):
                     print tweet['text']
-                    colorWipe(strip, MY_CODES[code])
+                    MY_CODES[code]()
                     print "Breaking check"
                     break
 
@@ -168,7 +165,7 @@ def doTwitterSearch():
         config.set('Twitter', 'tweetCount', tweetCount)
         config.set('Twitter','lastUpdate',datetime.datetime.now())
         # Writing last tweet id and total number of tweets to config file
-        with open('config.ini', 'wb') as configfile:
+        with open(LOG_FILE, 'wb') as configfile:
             config.write(configfile)
     except:
         e = sys.exc_info()[0]
@@ -178,17 +175,35 @@ def doTwitterSearch():
 
 # Main program logic follows:
 if __name__ == '__main__':
+
 	# Intialize the library (must be called once before other functions).
 	strip.begin()
 
 	print ('Press Ctrl-C to quit.')
 	
+	#Look up new color codes here: http://www.rapidtables.com/web/color/RGB_Color.htm
+	MY_CODES={
+		"red":partial(colorWipe,strip, Color(255, 0, 0)),
+		"blue":partial(colorWipe,strip, Color(0, 0, 255)),
+		"green":partial(colorWipe,strip, Color(0, 255, 0)),
+		"white":partial(colorWipe,strip, Color(255, 255, 255)),
+		"yellow":partial(colorWipe,strip, Color(255, 255, 0)),
+		"cyan":partial(colorWipe,strip, Color(0, 255, 255)),
+		"aqua":partial(colorWipe,strip, Color(0, 255, 255)),
+		"teal":partial(colorWipe,strip, Color(0, 255, 255)),
+		"magenta":partial(colorWipe,strip, Color(255, 0, 255)),
+		"fuscia":partial(colorWipe,strip, Color(255, 0, 255)),
+		"pink":partial(colorWipe,strip, Color(255, 0, 255)),
+		"theatre":partial(theaterChase,strip, Color(255, 0, 255), 50, 10),
+		"rainbow":partial(rainbow,strip,20,3)
+	}
+
 	# Color wipe animations.
 	colorWipe(strip, Color(255, 0, 0))  # Red wipe
+	colorWipe(strip, Color(255, 255, 0))  # Blue wipe	
 	colorWipe(strip, Color(0, 255, 0))  # Green wipe
-	colorWipe(strip, Color(0, 0, 255))  # Blue wipe	
-	colorWipe(strip, Color(0, 0, 0))  # Off wipe	
-		
+	colorWipe(strip, Color(0, 0, 0))  # Off wipe
+	
 		
 	twitterLoop=task.LoopingCall(doTwitterSearch)
 	twitterLoop.start(MY_SEARCH_DELAY)
